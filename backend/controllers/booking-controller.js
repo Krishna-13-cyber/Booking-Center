@@ -38,16 +38,16 @@ export const newBooking = async (req, res, next) => {
     await existingUser.save({ session });
     await existingArea.save({ session });
     await booking.save({ session });
-    session.commitTransaction();
+    await session.commitTransaction();
   } catch (err) {
     console.log(err);
   }
 
   if (!booking) {
-    res.status(500).json({ message: " Unable to create a new Booking" });
+    return res.status(500).json({ message: " Unable to create a new Booking" });
   }
 
-  res.status(201).json({ booking });
+  return res.status(201).json({ booking });
 };
 
 export const getBookingById = async (req, res, next) => {
@@ -59,9 +59,9 @@ export const getBookingById = async (req, res, next) => {
     console.log(err);
   }
   if (!booking) {
-    res.status(404).json({ message: "Invalid Booking Id" });
+    return res.status(404).json({ message: "Invalid Booking Id" });
   }
-  res.status(200).json({ booking });
+  return res.status(200).json({ booking });
 };
 
 export const deleteBookingById = async (req, res, next) => {
@@ -69,19 +69,25 @@ export const deleteBookingById = async (req, res, next) => {
   let booking;
   try {
     booking = await Booking.findByIdAndRemove(id).populate("user area");
-    console.log(booking);
+
+    if (!booking) {
+      return res.status(404).json({ message: "Unable to Delete" });
+    }
+
     const session = await mongoose.startSession();
     session.startTransaction();
     await booking.user.bookings.pull(booking);
     await booking.area.bookings.pull(booking);
     await booking.area.save({ session });
     await booking.user.save({ session });
-    session.commitTransaction();
+    await session.commitTransaction();
   } catch (err) {
     console.log(err);
   }
+
   if (!booking) {
-    res.status(404).json({ message: "Unable to Delete" });
+    return res.status(404).json({ message: "Unable to Delete" });
   }
-  res.status(200).json({ message: "Deleted Successfully" });
+
+  return res.status(200).json({ message: "Deleted Successfully" });
 };

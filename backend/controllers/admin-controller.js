@@ -1,16 +1,18 @@
 import Admin from "../models/Admin.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
+import { isBlank, isInvalidEmail } from "../utils/validation.js";
 
 export const addAdmin = async (req, res, next) => {
   const { email, password } = req.body;
-  if (!email && email.trim() === "" && !password && password.trim() === "") {
+
+  if (isInvalidEmail(email) || isBlank(password)) {
     return res.status(422).json({ message: "Invalid Data" });
   }
+
   let existingAdmin;
   try {
-    existingAdmin = await Admin.findOne({ email });
+    existingAdmin = await Admin.findOne({ email: email.trim() });
   } catch (err) {
     return console.log(err);
   }
@@ -20,31 +22,31 @@ export const addAdmin = async (req, res, next) => {
   }
 
   let admin;
-  const hashedPassword = bcrypt.hashSync(password);
+  const hashedPassword = bcrypt.hashSync(password.trim());
 
   try {
-    // user = new User({ name, email, password: hashedPassword });
-    admin = new Admin({ email, password: hashedPassword });
+    admin = new Admin({ email: email.trim(), password: hashedPassword });
     admin = await admin.save();
   } catch (err) {
     console.log(err);
   }
 
   if (!admin) {
-    res.status(500).json({ message: "Unable to add admin" });
+    return res.status(500).json({ message: "Unable to add admin" });
   }
   return res.status(201).json({ admin });
 };
 
 export const loginAdmin = async (req, res, next) => {
   const { email, password } = req.body;
-  if (!email && email.trim() === "" && !password && password.trim() === "") {
+
+  if (isInvalidEmail(email) || isBlank(password)) {
     return res.status(422).json({ message: "Invalid Data" });
   }
 
   let existingAdmin;
   try {
-    existingAdmin = await Admin.findOne({ email });
+    existingAdmin = await Admin.findOne({ email: email.trim() });
   } catch (err) {
     console.log(err);
   }
@@ -53,7 +55,7 @@ export const loginAdmin = async (req, res, next) => {
   }
 
   const isPasswordCorrect = bcrypt.compareSync(
-    password,
+    password.trim(),
     existingAdmin.password
   );
   if (!isPasswordCorrect) {
@@ -74,7 +76,6 @@ export const getAllAdmins = async (req, res, next) => {
   try {
     admin = await Admin.find();
   } catch (err) {
-    // next(err);
     console.log(err);
   }
 

@@ -1,13 +1,13 @@
-import Bookings from "../models/Bookings.js";
+import Booking from "../models/Bookings.js";
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+import { isBlank, isInvalidEmail } from "../utils/validation.js";
 
 export const getAllUsers = async (req, res, next) => {
   let users;
   try {
     users = await User.find();
   } catch (err) {
-    // next(err);
     console.log(err);
   }
 
@@ -20,24 +20,35 @@ export const getAllUsers = async (req, res, next) => {
 
 export const signUp = async (req, res, next) => {
   const { name, email, password } = req.body;
-  if (
-    !name &&
-    name.trim() === "" &&
-    !email &&
-    email.trim() === "" &&
-    !password &&
-    password.trim() === ""
-  ) {
+
+  if (isBlank(name) || isInvalidEmail(email) || isBlank(password)) {
     return res.status(422).json({ message: "Invalid Data" });
   }
-  const hashedPassword = bcrypt.hashSync(password);
+
+  let existingUser;
+  try {
+    existingUser = await User.findOne({ email: email.trim() });
+  } catch (err) {
+    console.log(err);
+  }
+
+  if (existingUser) {
+    return res.status(400).json({ message: "User Already Exists" });
+  }
+
+  const hashedPassword = bcrypt.hashSync(password.trim());
   let user;
   try {
-    user = new User({ name, email, password: hashedPassword });
+    user = new User({
+      name: name.trim(),
+      email: email.trim(),
+      password: hashedPassword,
+    });
     user = await user.save();
   } catch (err) {
     console.log(err);
   }
+
   if (!user) {
     return res.status(500).json({ message: "Unexpected Error Occured" });
   }
@@ -47,31 +58,31 @@ export const signUp = async (req, res, next) => {
 export const updateUser = async (req, res, next) => {
   const id = req.params.id;
   const { name, email, password } = req.body;
-  if (
-    !name &&
-    name.trim() === "" &&
-    !email &&
-    email.trim() === "" &&
-    !password &&
-    password.trim() === ""
-  ) {
+
+  if (isBlank(name) || isInvalidEmail(email) || isBlank(password)) {
     return res.status(422).json({ message: "Invalid Data" });
   }
-  const hashedPassword = bcrypt.hashSync(password);
+
+  const hashedPassword = bcrypt.hashSync(password.trim());
   let user;
   try {
-    user = await User.findByIdAndUpdate(id, {
-      name,
-      email,
-      password: hashedPassword,
-    });
+    user = await User.findByIdAndUpdate(
+      id,
+      {
+        name: name.trim(),
+        email: email.trim(),
+        password: hashedPassword,
+      },
+      { new: true }
+    );
   } catch (err) {
     console.log(err);
   }
+
   if (!user) {
     return res.status(500).json({ message: "Something went wrong" });
   }
-  return res.status(200).json({ message: "Updated Succesfully" });
+  return res.status(200).json({ message: "Updated Succesfully", user });
 };
 
 export const deleteUser = async (req, res, next) => {
@@ -90,13 +101,14 @@ export const deleteUser = async (req, res, next) => {
 
 export const loginUser = async (req, res, next) => {
   const { email, password } = req.body;
-  if (!email && email.trim() === "" && !password && password.trim() === "") {
+
+  if (isInvalidEmail(email) || isBlank(password)) {
     return res.status(422).json({ message: "Invalid Data" });
   }
 
   let existingUser;
   try {
-    existingUser = await User.findOne({ email });
+    existingUser = await User.findOne({ email: email.trim() });
   } catch (err) {
     console.log(err);
   }
@@ -104,7 +116,10 @@ export const loginUser = async (req, res, next) => {
     return res.status(404).json({ message: "User Not Found Please Register" });
   }
 
-  const isPasswordCorrect = bcrypt.compareSync(password, existingUser.password);
+  const isPasswordCorrect = bcrypt.compareSync(
+    password.trim(),
+    existingUser.password
+  );
   if (!isPasswordCorrect) {
     return res.status(400).json({ message: "Incorrect Password" });
   }
@@ -118,7 +133,7 @@ export const getAllBookingOfUser = async (req, res, next) => {
   const id = req.params.id;
   let bookings;
   try {
-    bookings = await Bookings.find({ user: id }).populate("area user");
+    bookings = await Booking.find({ user: id }).populate("area user");
   } catch (err) {
     console.log(err);
   }

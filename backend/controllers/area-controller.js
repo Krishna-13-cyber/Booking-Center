@@ -1,54 +1,33 @@
 import Area from "../models/Areas.js";
 import Admin from "../models/Admin.js";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
 import mongoose from "mongoose";
+import { isBlank } from "../utils/validation.js";
 
 export const addArea = async (req, res, next) => {
-  const extractedToken = req.headers.authorization.split(" ")[1];
-  if (!extractedToken && extractedToken.trim() === "") {
-    return res.status(404).json({ message: "Token not found" });
-  }
-  //console.log(extractedToken);
+  const adminId = req.adminId;
 
-  let adminId;
-
-  // verify token
-  jwt.verify(extractedToken, process.env.JWT_SECRET, (err, decrypted) => {
-    if (err) {
-      return res.status(400).json({ message: `${err.message}` });
-    } else {
-      adminId = decrypted.id;
-      return;
-    }
-  });
-
-  //create new Area
   const { title, description, imageUrl, featured } = req.body;
-  if (
-    !title &&
-    title.trim() === "" &&
-    !description &&
-    description.trim() == "" &&
-    !imageUrl &&
-    imageUrl.trim() === ""
-  ) {
+  if (isBlank(title) || isBlank(description) || isBlank(imageUrl)) {
     return res.status(422).json({ message: "INVALID INPUTS" });
   }
 
   let area;
   try {
     area = new Area({
-      title,
-      description,
-      imageUrl,
+      title: title.trim(),
+      description: description.trim(),
+      imageUrl: imageUrl.trim(),
       featured,
       admin: adminId,
     });
 
     const session = await mongoose.startSession();
     const adminUser = await Admin.findById(adminId);
+
+    if (!adminUser) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
     session.startTransaction();
     await area.save({ session });
     adminUser.addedAreas.push(area);
@@ -59,7 +38,7 @@ export const addArea = async (req, res, next) => {
   }
 
   if (!area) {
-    res.status(500).json({ message: "Request Failed" });
+    return res.status(500).json({ message: "Request Failed" });
   }
 
   return res.status(201).json({ area });
@@ -70,7 +49,6 @@ export const getAllAreas = async (req, res, next) => {
   try {
     areas = await Area.find();
   } catch (err) {
-    // next(err);
     console.log(err);
   }
 
@@ -90,7 +68,7 @@ export const getAreaById = async (req, res, next) => {
     console.log(err);
   }
   if (!area) {
-    res.status(404).json({ message: "Invalid Area Id" });
+    return res.status(404).json({ message: "Invalid Area Id" });
   }
-  res.status(200).json({ area });
+  return res.status(200).json({ area });
 };
