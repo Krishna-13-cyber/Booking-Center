@@ -1,4 +1,4 @@
-import mongoose, { Mongoose } from "mongoose";
+import mongoose from "mongoose";
 const Schema = mongoose.Schema;
 
 const areaSchema = new Schema({
@@ -20,7 +20,7 @@ const areaSchema = new Schema({
   bookings: [
     {
       type: mongoose.Types.ObjectId,
-      ref: "Bookings",
+      ref: "Booking",
     },
   ],
   admin: {

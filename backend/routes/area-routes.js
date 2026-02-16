@@ -4,10 +4,11 @@ import {
   getAllAreas,
   getAreaById,
 } from "../controllers/area-controller.js";
+import { verifyAdminToken } from "../middleware/auth.js";
 
 const areaRouter = express.Router();
 
-areaRouter.post("/", addArea);
+areaRouter.post("/", verifyAdminToken, addArea);
 areaRouter.get("/", getAllAreas);
 areaRouter.get("/:id", getAreaById);
 
